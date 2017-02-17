@@ -333,11 +333,11 @@ main (int argc, char **argv)
 #ifdef MTERASE
     case MTERASE:
 #endif
-      tapedesc = rmtopen (tapedev, O_WRONLY, 0, rsh_command_option);
+      tapedesc = rmtopen (tapedev, O_WRONLY | O_NONBLOCK, 0, rsh_command_option);
       break;
 
     default:
-      tapedesc = rmtopen (tapedev, O_RDONLY, 0, rsh_command_option);
+      tapedesc = rmtopen (tapedev, O_RDONLY | O_NONBLOCK, 0, rsh_command_option);
     }
   
   if (tapedesc == -1)
