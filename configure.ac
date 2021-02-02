@@ -46,7 +46,7 @@ AC_CHECK_TYPE(gid_t, int)
 AC_HEADER_STDC
 AC_HEADER_DIRENT
 
-AC_CHECK_FUNCS([fchmod fchown])
+AC_CHECK_FUNCS([fchmod fchown copy_file_range])
 # This is needed for mingw build
 AC_CHECK_FUNCS([setmode getpwuid getpwnam getgrgid getgrnam pipe fork getuid geteuid])
 

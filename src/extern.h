@@ -170,6 +170,10 @@ void tape_toss_input (int in_des, off_t num_bytes);
 void copy_files_tape_to_disk (int in_des, int out_des, off_t num_bytes);
 void copy_files_disk_to_tape (int in_des, int out_des, off_t num_bytes, char *filename);
 void copy_files_disk_to_disk (int in_des, int out_des, off_t num_bytes, char *filename);
+#ifdef HAVE_COPY_FILE_RANGE
+ssize_t copy_files_range (int in_des, int out_des, off_t num_bytes);
+#endif
+
 void warn_if_file_changed (char *file_name, off_t old_file_size,
                            time_t old_file_mtime);
 void create_all_directories (char const *name);
