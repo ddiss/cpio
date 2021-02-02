@@ -51,6 +51,12 @@ AC_COMPILE_CHECK_RETTYPE([minor], [0])
 AC_CHECK_FUNCS([fchmod fchown])
 # This is needed for mingw build
 AC_CHECK_FUNCS([setmode getpwuid getpwnam getgrgid getgrnam pipe fork getuid geteuid])
+AC_CHECK_FUNC([copy_file_range],
+              [AC_CHECK_SIZEOF(off_t)
+               AC_CHECK_SIZEOF(loff_t)
+               if (test "$ac_cv_sizeof_off_t" -eq "$ac_cv_sizeof_loff_t"); then
+                   AC_DEFINE(HAVE_CPIO_REFLINK, [1], [cpio --reflink support])
+               fi])
 
 # gnulib modules
 gl_INIT

@@ -516,6 +516,56 @@ copy_files_disk_to_tape (int in_des, int out_des, off_t num_bytes,
       in_buff += size;
     }
 }
+
+#ifdef HAVE_CPIO_REFLINK
+/*
+ * Use the copy_file_range(2) syscall for in-kernel transfer between two file
+ * descriptors. Copy-on-write enabled filesystems may optimize I/O by using
+ * reflinks.
+ */
+ssize_t
+copy_files_range (int in_des, int out_des, off_t num_bytes)
+{
+  loff_t in_off = 0, out_off = 0;
+  ssize_t total = 0;
+  ssize_t ret;
+
+  in_off = lseek (in_des, 0, SEEK_CUR);
+  if (in_off < 0)
+    return -errno;
+
+  out_off = lseek (out_des, 0, SEEK_CUR);
+  if (out_off < 0)
+    return -errno;
+
+  while (total < num_bytes)
+    {
+      ret = copy_file_range (in_des, &in_off, out_des, &out_off,
+			     num_bytes - total, 0);
+      /* simplify read/write fallback: don't partially seek on error */
+      if (ret == 0)
+        return -ENODATA;
+      if (ret < 0)
+	return -errno;
+      total += ret;
+    }
+
+  /* copy complete. seek to new offset */
+  in_off = lseek (in_des, in_off, SEEK_SET);
+  if (in_off < 0)
+    error(1, errno, "failed final src seek");
+
+  out_off = lseek (out_des, out_off, SEEK_SET);
+  if (out_off < 0)
+    error(1, errno, "failed final dst seek");
+
+  output_bytes += total;
+  input_bytes += total;
+
+  return total;
+}
+#endif /* HAVE_CPIO_REFLINK */
+
 /* Copy a file using the input and output buffers, which may start out
    partly full.  After the copy, the files are not closed nor the last
    block flushed to output, and the input buffer may still be partly
