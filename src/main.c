@@ -61,7 +61,8 @@ enum cpio_options {
   RENUMBER_INODES_OPTION,
   IGNORE_DEVNO_OPTION,
   DEVICE_INDEPENDENT_OPTION,
-  CHAIN_OPTION
+  CHAIN_OPTION,
+  REFLINK_OPTION
 };
 
 const char *program_authors[] =
@@ -154,9 +155,9 @@ static struct argp_option options[] = {
   {"rsh-command", RSH_COMMAND_OPTION, N_("COMMAND"), 0,
    N_("Use COMMAND instead of rsh"), GRID+1 },
 #undef GRID
-  
+
   /* ********** */
-#define GRID 200  
+#define GRID 200
   {NULL, 0, NULL, 0,
    N_("Operation modifiers valid only in copy-in mode:"), GRID },
   {"nonmatching", 'f', 0, 0,
@@ -202,6 +203,11 @@ static struct argp_option options[] = {
   {"device-independent", DEVICE_INDEPENDENT_OPTION, NULL, 0,
    N_("Create device-independent (reproducible) archives") },
   {"reproducible", 0, NULL, OPTION_ALIAS },
+#ifdef HAVE_CPIO_REFLINK
+  {"reflink", REFLINK_OPTION, NULL, 0,
+   N_("Attempt to clone data between input and output files via copy_file_range(2)."),
+   GRID+1 },
+#endif
 #undef GRID
   
   /* ********** */
@@ -561,6 +567,10 @@ crc newc odc bin ustar tar (all-caps also recognized)"), arg));
       to_stdout_option = true;
       break;
 
+    case REFLINK_OPTION:
+      reflink_flag = true;
+      break;
+
     default:
       return ARGP_ERR_UNKNOWN;
     }
@@ -620,6 +630,7 @@ process_args (int argc, char *argv[])
       CHECK_USAGE (output_archive_name, "-O", "--extract");
       CHECK_USAGE (renumber_inodes_option, "--renumber-inodes", "--extract");
       CHECK_USAGE (ignore_devno_option, "--ignore-devno", "--extract");
+      CHECK_USAGE (reflink_flag, "--reflink", "--extract");
       if (to_stdout_option)
 	{
 	  CHECK_USAGE (create_dir_flag, "--make-directories", "--to-stdout");
@@ -672,6 +683,11 @@ process_args (int argc, char *argv[])
 		      _("--chain is used but no archive file name "
 			"is given (use -F or -O options)")));
 
+      if (reflink_flag && !(archive_name || output_archive_name))
+	USAGE_ERROR ((0, 0,
+		      _("--reflink is used but no archive file name "
+			"is given (use -F or -O options)")));
+
       CHECK_USAGE (rename_batch_file, "--rename-batch-file", "--create");
       CHECK_USAGE (input_archive_name, "-I", "--create");
       if (archive_name && output_archive_name)
@@ -715,6 +731,7 @@ process_args (int argc, char *argv[])
       CHECK_USAGE (renumber_inodes_option, "--renumber-inodes",
 		   "--pass-through");
       CHECK_USAGE (ignore_devno_option, "--ignore-devno", "--pass-through");
+      CHECK_USAGE (reflink_flag, "--reflink", "--pass-through");
       
       directory_name = argv[index];
     }

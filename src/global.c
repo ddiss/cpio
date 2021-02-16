@@ -115,6 +115,9 @@ int no_abs_paths_flag = false;
 int debug_flag = false;
 #endif
 
+/* if true, attempt to use copy_file_range(2) */
+bool reflink_flag = false;
+
 /* File position of last header read.  Only used during -A to determine
    where the old TRAILER!!! record started.  */
 int last_header_start = 0;
@@ -198,4 +201,3 @@ char *change_directory_option;
 
 int renumber_inodes_option;
 int ignore_devno_option;
-
