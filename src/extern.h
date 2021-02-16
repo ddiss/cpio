@@ -54,6 +54,7 @@ extern int sparse_flag;
 extern int quiet_flag;
 extern int only_verify_crc_flag;
 extern int no_abs_paths_flag;
+extern bool reflink_flag;
 extern unsigned int warn_option;
 extern mode_t newdir_umask;
 extern int renumber_inodes_option;
@@ -99,7 +100,6 @@ extern char output_is_seekable;
 extern int (*xstat) ();
 extern void (*copy_function) ();
 extern char *change_directory_option;
-
 
 /* copyin.c */
 void warn_junk_bytes (long bytes_skipped);

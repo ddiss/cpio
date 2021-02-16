@@ -52,6 +52,7 @@ enum cpio_options {
   ONLY_VERIFY_CRC_OPTION,        
   RENAME_BATCH_FILE_OPTION,      
   RSH_COMMAND_OPTION,            
+  REFLINK_COMMAND_OPTION,
   QUIET_OPTION,                  
   SPARSE_OPTION,                 
   FORCE_LOCAL_OPTION,            
@@ -152,10 +153,15 @@ static struct argp_option options[] = {
    GRID+1 },
   {"rsh-command", RSH_COMMAND_OPTION, N_("COMMAND"), 0,
    N_("Use COMMAND instead of rsh"), GRID+1 },
+#ifdef HAVE_COPY_FILE_RANGE
+  {"reflink", REFLINK_COMMAND_OPTION, NULL, 0,
+   N_("Attempt to clone data between input and output files via copy_file_range(2)."),
+   GRID+1 },
+#endif
 #undef GRID
-  
+
   /* ********** */
-#define GRID 200  
+#define GRID 200
   {NULL, 0, NULL, 0,
    N_("Operation modifiers valid only in copy-in mode:"), GRID },
   {"nonmatching", 'f', 0, 0,
@@ -548,6 +554,10 @@ crc newc odc bin ustar tar (all-caps also recognized)"), arg));
 
     case TO_STDOUT_OPTION:
       to_stdout_option = true;
+      break;
+
+    case REFLINK_COMMAND_OPTION:
+      reflink_flag = true;
       break;
 
     default:
