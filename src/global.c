@@ -68,6 +68,9 @@ int crc_i_flag = false;
 /* If true, append to end of archive. (-A) */
 int append_flag = false;
 
+/* If true, append to end of output archive file. (--chain) */
+int chain_flag = false;
+
 /* If true, swap bytes of each file during cpio -i.  */
 int swap_bytes_flag = false;
 
