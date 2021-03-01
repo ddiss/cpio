@@ -718,9 +718,36 @@ process_copy_out ()
 
 	      if (write_out_header (&file_hdr, out_file_des))
 		continue;
-	      copy_files_disk_to_tape (in_file_des,
-				       out_file_des, file_hdr.c_filesize,
-				       orig_file_name);
+#ifdef HAVE_COPY_FILE_RANGE
+	      /*
+	       * copy_file_range(2) should only be used if:
+	       * - it has explicitly been requested via --reflink
+	       * - crc calculations for aren't needed
+	       * - output is a regular seekable file
+	       */
+	      if (reflink_flag && !crc_i_flag && output_is_seekable)
+	        {
+		  ssize_t ret;
+		  /* flush output buffer before copy_file_range I/O */
+		  tape_empty_output_buffer (out_file_des);
+                  ret = copy_files_range (in_file_des,
+					  out_file_des,
+					  file_hdr.c_filesize);
+		  /* -EXDEV: can't use copy_file_range, fallback to read/write */
+		  if (ret == -EXDEV)
+		    copy_files_disk_to_tape (in_file_des,
+					     out_file_des, file_hdr.c_filesize,
+					     orig_file_name);
+		  else if (ret < 0)
+		    error (PAXEXIT_FAILURE, -ret, _("copy_file_range failed."));
+	        }
+	      else
+#endif /* HAVE_COPY_FILE_RANGE */
+		{
+		  copy_files_disk_to_tape (in_file_des,
+					   out_file_des, file_hdr.c_filesize,
+					   orig_file_name);
+		}
 	      warn_if_file_changed(orig_file_name, file_hdr.c_filesize,
                                    file_hdr.c_mtime);
 

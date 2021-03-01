@@ -508,9 +508,30 @@ copyin_regular_file (struct cpio_file_stat* file_hdr, int in_file_des)
 	error (0, 0, _("cannot swap bytes of %s: odd number of bytes"),
 	       file_hdr->c_name);
     }
-  copy_files_tape_to_disk (in_file_des, out_file_des, file_hdr->c_filesize);
-  disk_empty_output_buffer (out_file_des, true);
-  
+#ifdef HAVE_COPY_FILE_RANGE
+  if (reflink_flag && !crc_i_flag && !to_stdout_option &&
+      !swapping_halfwords && !swapping_bytes)
+    {
+      ssize_t ret;
+      /* output buffer empty, no need to flush */
+      ret = copy_files_range (in_file_des,
+			      out_file_des,
+			      file_hdr->c_filesize);
+      /* -EXDEV: can't use copy_file_range, fallback to read/write */
+      if (ret == -EXDEV)
+	{
+	  copy_files_tape_to_disk (in_file_des, out_file_des, file_hdr->c_filesize);
+	  disk_empty_output_buffer (out_file_des, true);
+	}
+      else if (ret < 0)
+        error (PAXEXIT_FAILURE, -ret, _("copy_file_range failed."));
+    }
+  else
+#endif /* HAVE_COPY_FILE_RANGE */
+    {
+      copy_files_tape_to_disk (in_file_des, out_file_des, file_hdr->c_filesize);
+      disk_empty_output_buffer (out_file_des, true);
+    }
   if (to_stdout_option)
     {
       if (archive_format == arf_crcascii)
