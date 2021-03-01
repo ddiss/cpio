@@ -510,7 +510,7 @@ copyin_regular_file (struct cpio_file_stat* file_hdr, int in_file_des)
     }
   copy_files_tape_to_disk (in_file_des, out_file_des, file_hdr->c_filesize);
   disk_empty_output_buffer (out_file_des, true);
-  
+
   if (to_stdout_option)
     {
       if (archive_format == arf_crcascii)
