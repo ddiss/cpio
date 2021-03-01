@@ -61,7 +61,8 @@ enum cpio_options {
   TO_STDOUT_OPTION,
   RENUMBER_INODES_OPTION,
   IGNORE_DEVNO_OPTION,
-  DEVICE_INDEPENDENT_OPTION
+  DEVICE_INDEPENDENT_OPTION,
+  CHAIN_OPTION
 };
 
 const char *program_authors[] =
@@ -196,6 +197,8 @@ static struct argp_option options[] = {
    N_("Operation modifiers valid only in copy-out mode:"), GRID },
   {"append", 'A', 0, 0,
    N_("Append to an existing archive."), GRID+1 },
+  {"chain", CHAIN_OPTION, 0, 0,
+   N_("Chain to the end of an existing file."), GRID+1 },
   {NULL, 'O', N_("[[USER@]HOST:]FILE-NAME"), 0,
    N_("Archive filename to use instead of standard output. Optional USER and HOST specify the user and host names in case of a remote archive"), GRID+1 },
   {"renumber-inodes", RENUMBER_INODES_OPTION, NULL, 0,
@@ -312,7 +315,15 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case 'A':		/* Append to the archive.  */
+      if (chain_flag)
+	USAGE_ERROR ((0, 0, _("--append is incompatible with --chain")));
       append_flag = true;
+      break;
+
+    case CHAIN_OPTION:	/* Append a new archive to the end of a file */
+      if (append_flag)
+	USAGE_ERROR ((0, 0, _("--append is incompatible with --chain")));
+      chain_flag = true;
       break;
 
     case 'b':		/* Swap bytes and halfwords.  */
@@ -615,6 +626,7 @@ process_args (int argc, char *argv[])
       CHECK_USAGE (reset_time_flag, "--reset", "--extract");
       CHECK_USAGE (xstat != lstat, "--dereference", "--extract");
       CHECK_USAGE (append_flag, "--append", "--extract");
+      CHECK_USAGE (chain_flag, "--chain", "--extract");
       CHECK_USAGE (output_archive_name, "-O", "--extract");
       CHECK_USAGE (renumber_inodes_option, "--renumber-inodes", "--extract");
       CHECK_USAGE (ignore_devno_option, "--ignore-devno", "--extract");
@@ -665,6 +677,11 @@ process_args (int argc, char *argv[])
 		      _("--append is used but no archive file name "
 			"is given (use -F or -O options)")));
 
+      if (chain_flag && !(archive_name || output_archive_name))
+	USAGE_ERROR ((0, 0,
+		      _("--chain is used but no archive file name "
+			"is given (use -F or -O options)")));
+
       CHECK_USAGE (rename_batch_file, "--rename-batch-file", "--create");
       CHECK_USAGE (input_archive_name, "-I", "--create");
       if (archive_name && output_archive_name)
@@ -698,6 +715,7 @@ process_args (int argc, char *argv[])
       CHECK_USAGE (table_flag, "--list", "--pass-through");
       CHECK_USAGE (rename_flag, "--rename", "--pass-through");
       CHECK_USAGE (append_flag, "--append", "--pass-through");
+      CHECK_USAGE (chain_flag, "--chain", "--pass-through");
       CHECK_USAGE (rename_batch_file, "--rename-batch-file", "--pass-through");
       CHECK_USAGE (no_abs_paths_flag, "--no-absolute-pathnames",
 		   "--pass-through");
@@ -716,12 +734,19 @@ process_args (int argc, char *argv[])
       if (copy_function != process_copy_in && copy_function != process_copy_out)
 	error (PAXEXIT_FAILURE, 0, 
 	       _("-F can be used only with --create or --extract"));
+      if (chain_flag)
+	{
+	  if (copy_function != process_copy_out)
+	    error (PAXEXIT_FAILURE, 0,
+		   _("--chain can only be used with --create"));
+	}
       archive_des = open_archive (archive_name);
       if (archive_des < 0)
 	error (PAXEXIT_FAILURE, errno, _("Cannot open %s"), 
                quotearg_colon (archive_name));
+
     }
-		     
+
   /* Prevent SysV non-root users from giving away files inadvertantly.
      This happens automatically on BSD, where only root can give
      away files.  */

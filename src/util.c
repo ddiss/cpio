@@ -855,7 +855,14 @@ open_archive (char *file)
     fd = rmtopen (file, O_RDONLY | O_BINARY | O_NONBLOCK, MODE_RW, rsh_command_option);
   else
     {
-      if (!append_flag)
+      if (chain_flag)
+	{
+	  fd = rmtopen (file, O_WRONLY | O_BINARY | O_NONBLOCK, MODE_RW,
+			rsh_command_option);
+	  if (fd >= 0 && lseek (fd, 0, SEEK_END) < 0)
+	    error (PAXEXIT_FAILURE, errno, _("failed to seek for --chain"));
+	}
+      else if (!append_flag)
 	fd = rmtopen (file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_NONBLOCK, MODE_RW,
 			rsh_command_option);
       else

@@ -41,6 +41,7 @@ extern int link_flag;
 extern int retain_time_flag;
 extern int crc_i_flag;
 extern int append_flag;
+extern int chain_flag;
 extern int swap_bytes_flag;
 extern int swap_halfwords_flag;
 extern int swapping_bytes;
