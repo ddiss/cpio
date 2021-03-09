@@ -1,0 +1,91 @@
+# Process this file with autom4te to create testsuite.  -*- Autotest -*-
+# Copyright (C) 2004, 2006-2007, 2010, 2014-2015, 2017 Free Software
+# Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA.
+
+AT_SETUP([chain])
+
+AT_DATA([filelist_first],[a 18
+b	1024
+c	356
+d	20000
+])
+
+AT_DATA([filelist_second],[z 42
+y	4096
+x	2000
+])
+
+AT_CHECK([
+while read NAME LENGTH
+do
+	genfile --length $LENGTH > $NAME
+	echo $NAME
+done < filelist_first > filelist_first_raw
+
+while read NAME LENGTH
+do
+	genfile --length $LENGTH > $NAME
+	echo $NAME
+done < filelist_second > filelist_second_raw
+
+for format in newc crc
+do
+    cpio --format=$format --quiet -o -O archive.$format < filelist_first_raw
+    cpio_first_size=`stat -c %s archive.$format` || AT_SKIP_TEST
+
+    cpio --format=$format --quiet --chain -o -O archive.$format < filelist_second_raw
+
+    rm -rf output
+    mkdir output && cd output
+
+    cpio -i --quiet < ../archive.$format
+
+    # only files from the first archive should be present
+    while read file
+    do
+        test -f $file || echo "$file not found"
+    done < ../filelist_first_raw
+    while read file
+    do
+        test -f $file && echo "$file unexpectedly found"
+    done < ../filelist_second_raw
+
+    # skip over first archive for second extraction
+    dd if=../archive.$format skip="$cpio_first_size" bs=1 2>/dev/null | cpio -i --quiet
+
+    # second archive files should now be present
+    while read file
+    do
+        test -f $file || echo "$file not found"
+    done < ../filelist_second_raw
+
+    cd ..
+done
+])
+
+AT_CHECK([
+    # chain without output file should throw an error
+    echo "filelist_first" | cpio --format=newc --quiet --chain -o > a.cpio
+],
+[2],
+[],
+[cpio: --chain is used but no archive file name is given (use -F or -O options)
+Try 'cpio --help' or 'cpio --usage' for more information.
+])
+
+AT_CLEANUP
