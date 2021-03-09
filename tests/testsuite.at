@@ -36,6 +36,7 @@ m4_include([symlink-bad-length.at])
 m4_include([symlink-long.at])
 m4_include([symlink-to-stdout.at])
 m4_include([interdir.at])
+m4_include([chain.at])
 
 m4_include([setstat01.at])
 m4_include([setstat02.at])
