@@ -1,0 +1,98 @@
+# Process this file with autom4te to create testsuite.  -*- Autotest -*-
+# Copyright (C) 2004, 2006-2007, 2010, 2014-2015, 2017 Free Software
+# Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA.
+
+AT_SETUP([reflink])
+
+# The copy_file_range() syscall on XFS and Btrfs requires filesystem
+# alignment to actually perform extent sharing (reflink), otherwise
+# the kernel may fallback to splice. In an effort to trigger both
+# reflink and splice, mix the archive with aligned and unaligned file
+# data.
+# hdr(crc/newc) = 110
+# filename(a)   + 2
+# data          + 3872
+# hdr(crc/newc) + 110
+# filename(b)   + 2
+# = 4096 (common XFS / Btrfs FS block size)
+AT_DATA([filelist],[a 3872
+b	16384
+c	3872
+d	4096
+e	0
+f	5
+g	4096
+])
+
+AT_CHECK([
+# check that cpio is built with copy_file_range syscall support
+cpio --help | grep reflink >/dev/null || AT_SKIP_TEST
+# this test requires diff
+diff filelist filelist || AT_SKIP_TEST
+
+while read NAME LENGTH
+do
+    genfile --length $LENGTH > $NAME
+    echo $NAME
+done < filelist > filelist_raw
+
+for format in bin odc newc crc tar ustar hpbin hpodc
+do
+    cpio --reflink --format=$format --quiet -o -O reflink.$format < filelist_raw
+    # 'xfs_io -c "fiemap -v" reflink.$format' should show shared extents
+    cpio --format=$format --quiet -o < filelist_raw > archive.$format
+    diff reflink.$format archive.$format
+
+    for archive in archive.$format reflink.$format
+    do
+        rm -rf output.*
+        mkdir "output.$archive" && cd "output.$archive"
+        cpio -i --quiet < "../$archive"
+
+        while read file
+        do
+            test -f $file || echo "$file not found in $archive"
+        done < ../filelist_raw
+
+        cd ..
+    done
+done
+])
+
+AT_CHECK([
+    # reflink without output file should throw an error
+    echo "filelist" | cpio --format=newc --quiet --reflink -o > a.cpio
+],
+[2],
+[],
+[cpio: --reflink is used but no archive file name is given (use -F or -O options)
+Try 'cpio --help' or 'cpio --usage' for more information.
+])
+
+AT_CHECK([
+    echo "filelist" | cpio --format=newc --quiet --reflink -o -O a.cpio
+    # copyin with reflink should throw an error
+    cpio --extract --reflink --file a.cpio
+],
+[2],
+[],
+[cpio: --reflink is meaningless with --extract
+Try 'cpio --help' or 'cpio --usage' for more information.
+])
+
+AT_CLEANUP
