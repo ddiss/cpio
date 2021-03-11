@@ -63,13 +63,17 @@ read_for_checksum (int in_file_des, int file_size, char *file_name)
 }
 
 /* Write out NULs to fill out the rest of the current block on
-   OUT_FILE_DES.  */
+   OUT_FILE_DES.  With reflink_flag, I/O may not have been buffered.  To ensure
+   that the post-trailer-zeros length matches with and without reflink_flag,
+   calculate the length based on where the I/O buffer offset would be.  */
 
 static void
 tape_clear_rest_of_block (int out_file_des)
 {
-  write_nuls_to_file (io_block_size - output_size, out_file_des, 
-                      tape_buffered_write);
+  off_t boff = (output_bytes + output_size) % io_block_size;
+  if (boff)
+    write_nuls_to_file (io_block_size - boff, out_file_des,
+			tape_buffered_write);
 }
 
 /* Write NULs on OUT_FILE_DES to move from OFFSET (the current location)
